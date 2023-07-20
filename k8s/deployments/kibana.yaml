@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:7.14.0
+          ports:
+            - containerPort: 5601
+          resources:
+            limits:
+              memory: 1Gi
+              cpu: 0.5
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch:9200" # Endereço do Elasticsearch
