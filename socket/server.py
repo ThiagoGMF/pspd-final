@@ -1,6 +1,8 @@
 import asyncio
 
 connected_clients = []
+remote_server_host = 'openmp-service'
+remote_server_port = 1234
 
 async def handle_client(reader, writer):
     connected_clients.append(writer)
@@ -22,6 +24,9 @@ async def handle_client(reader, writer):
                     client.write(data)
                     await client.drain()
 
+            # Enviar a mensagem para o servidor remoto
+            await send_to_remote_server(message)
+
     except asyncio.CancelledError:
         pass
     except ConnectionError:
@@ -34,6 +39,13 @@ async def handle_client(reader, writer):
         except asyncio.CancelledError:
             pass
         connected_clients.remove(writer)
+
+async def send_to_remote_server(message):
+    reader, writer = await asyncio.open_connection(remote_server_host, remote_server_port)
+    writer.write(message.encode())
+    await writer.drain()
+    writer.close()
+    await writer.wait_closed()
 
 async def main():
     server = await asyncio.start_server(handle_client, '0.0.0.0', 8888)

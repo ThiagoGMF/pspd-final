@@ -1,13 +1,13 @@
 # pspd-final
 
-## Rodar os deployments no k8s
+## Executar os pods
 
-- kubectl apply -f k8s/deployments/<nome-do-arquivo>
+- kubectl apply -f k8s/app.yaml
 
-## Rodar os services no k8s
+## Apagar os deployments e services
 
-- kubectl apply -f k8s/server/<nome-do-arquivo>
-- kubectl expose deployment <nome-do-deployment> --type=LoadBalancer --name <nome-do-servico> --port=<porta>
+- kubectl delete deployments --all
+- kubectl delete services --all
 
 ## Acessar os logs
 
@@ -20,6 +20,10 @@
 ## Ver os services
 
 - kubectl get service
+
+## Ver tudo
+
+- kubectl get all
 
 ## Executar os servicos
 
