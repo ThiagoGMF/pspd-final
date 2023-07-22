@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <omp.h>
+#include <pthread.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #define PORT 1234
 #define MAX_CLIENTS 5
@@ -167,16 +169,58 @@ void parse_message(const char* buffer, int* num1, int* num2) {
     free(numbers);
 }
 
+void *handle_client(void *arg) {
+    int client_socket = *(int *)arg;
+    char buffer[1024] = {0};
+    int valread;
+
+    // Read and respond with "Hello" to the client
+    const char *hello = "Hello from server!";
+    write(client_socket, hello, strlen(hello));
+
+    // Communicate with the client until it disconnects
+    while ((valread = read(client_socket, buffer, 1024)) > 0) {
+        // Print the received message from the client
+        printf("Received message: %s\n", buffer);
+
+        int num1, num2;
+    
+        parse_message(buffer, &num1, &num2);
+
+        if (num1 >=3 && num2 <= 10)
+            solveProblem(num1, num2);
+
+        // Respond with "Hello" again
+        write(client_socket, hello, strlen(hello));
+        
+        memset(buffer, 0, sizeof(buffer));
+    }
+
+    if (valread == 0) {
+        printf("Client disconnected\n");
+    } else {
+        perror("read");
+    }
+
+    close(client_socket);
+    pthread_exit(NULL);
+}
+
 int main() {
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
+    int opt = 1;
     int addrlen = sizeof(address);
-    char buffer[BUFFER_SIZE] = {0};
-    char hello[] = "Hello from server";
 
     // Create socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Socket creation failed");
+        perror("socket failed");
+        exit(EXIT_FAILURE);
+    }
+
+    // Set socket options
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+        perror("setsockopt");
         exit(EXIT_FAILURE);
     }
 
@@ -184,40 +228,36 @@ int main() {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    // Bind the socket to a port
+    // Bind the socket to the given IP and port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("Bind failed");
+        perror("bind failed");
         exit(EXIT_FAILURE);
     }
 
-    // Listen for incoming connections
-    if (listen(server_fd, 3) < 0) {
-        perror("Listen failed");
+    // Start listening for incoming connections
+    if (listen(server_fd, MAX_CLIENTS) < 0) {
+        perror("listen");
         exit(EXIT_FAILURE);
     }
 
-    printf("Server is listening on port %d...\n", PORT);
+    printf("Server listening on port %d...\n", PORT);
 
-    // Accept incoming connection
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        perror("Accept failed");
-        exit(EXIT_FAILURE);
+    while (1) {
+        // Accept a new connection
+        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+            perror("accept");
+            exit(EXIT_FAILURE);
+        }
+
+        printf("New client connected\n");
+
+        // Create a new thread to handle communication with the client
+        pthread_t tid;
+        if (pthread_create(&tid, NULL, handle_client, (void *)&new_socket) != 0) {
+            perror("pthread_create");
+            exit(EXIT_FAILURE);
+        }
     }
-
-    // Receive message from client
-    valread = read(new_socket, buffer, BUFFER_SIZE);
-    printf("Client: %s\n", buffer);
-
-    int num1, num2;
-    
-    parse_message(buffer, &num1, &num2);
-
-    if (num1 >=3 && num2 <= 10)
-        solveProblem(num1, num2);
-
-    // Respond to client
-    send(new_socket, hello, strlen(hello), 0);
-    printf("Server: %s\n", hello);
 
     return 0;
 }
