@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <omp.h>
-#include <pthread.h>
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -142,56 +141,42 @@ void solveProblem(int powmin, int powmax)
         free(tabulIn);
         free(tabulOut);
     }
-} 
+}
 
-// Função para tratar a conexão de cada cliente em uma thread separada
-void *handle_client(void *arg) {
-    printf("Novo cliente conectado\n");
+void parse_message(const char* buffer, int* num1, int* num2) {
+    // Find the position of '<' and '>'
+    const char* start = strchr(buffer, '<');
+    const char* end = strchr(buffer, '>');
     
-    int client_socket = *((int *)arg);
-    char buffer[1024] = {0};
-    char *message = "Mensagem do servidor";
-
-    // Enviar mensagem de boas-vindas ao cliente
-    // send(client_socket, message, strlen(message), 0);
-
-    // Receber e processar dados do cliente
-    while (1) {
-        int valread = read(client_socket, buffer, 1024);
-        if (valread <= 0) {
-            // Cliente desconectado ou erro na leitura
-            break;
-        }
-        printf("Mensagem recebida do cliente: %s\n", buffer);
-        // Lógica de processamento da mensagem, se necessário
-        // transformar em inteiro
-        // chamar a funcao solveProblem com os parametros corretos
-        // retornar pro cliente ? salvar no servidor?
+    if (start == NULL || end == NULL) {
+        fprintf(stderr, "Invalid message format: %s\n", buffer);
+        *num1 = *num2 = -1; // Set numbers to invalid values
+        return;
     }
-
-    // Fechar o socket do cliente e terminar a thread
-    close(client_socket);
-    printf("Cliente desconectado\n");
-    pthread_exit(NULL);
+    
+    // Extract the numbers from the buffer
+    int len = end - start - 1;
+    char* numbers = (char*)malloc(len + 1);
+    strncpy(numbers, start + 1, len);
+    numbers[len] = '\0';
+    
+    // Convert the numbers to integers
+    sscanf(numbers, "%d,%d", num1, num2);
+    
+    // Free allocated memory
+    free(numbers);
 }
 
 int main() {
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
-    int opt = 1;
     int addrlen = sizeof(address);
     char buffer[BUFFER_SIZE] = {0};
-    const char *message = "Servidor TCP/IP em C - Ola, cliente!";
+    char hello[] = "Hello from server";
 
-    // Criando o socket servidor
+    // Create socket
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("Erro ao criar o socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // Configurando opções do socket
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("Erro ao configurar opções do socket");
+        perror("Socket creation failed");
         exit(EXIT_FAILURE);
     }
 
@@ -199,40 +184,40 @@ int main() {
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(PORT);
 
-    // Vinculando o socket à porta e endereço
+    // Bind the socket to a port
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("Erro ao vincular o socket");
+        perror("Bind failed");
         exit(EXIT_FAILURE);
     }
 
-    // Escutando por conexões
-    if (listen(server_fd, MAX_CLIENTS) < 0) {
-        perror("Erro ao escutar");
+    // Listen for incoming connections
+    if (listen(server_fd, 3) < 0) {
+        perror("Listen failed");
         exit(EXIT_FAILURE);
     }
 
-    printf("Servidor escutando na porta %d...\n", PORT);
+    printf("Server is listening on port %d...\n", PORT);
 
-    // Aceitando conexões de clientes
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
-        perror("Erro ao aceitar a conexão");
+    // Accept incoming connection
+    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
+        perror("Accept failed");
         exit(EXIT_FAILURE);
     }
 
-    // Enviando mensagem para o cliente
-    send(new_socket, message, strlen(message), 0);
-    printf("Mensagem enviada para o cliente\n");
-
-    // Lendo a mensagem do cliente
+    // Receive message from client
     valread = read(new_socket, buffer, BUFFER_SIZE);
-    printf("Mensagem do cliente: %s\n", buffer);
+    printf("Client: %s\n", buffer);
 
-    // Fechando os sockets
-    close(new_socket);
-    close(server_fd);
+    int num1, num2;
+    
+    parse_message(buffer, &num1, &num2);
+
+    if (num1 >=3 && num2 <= 10)
+        solveProblem(num1, num2);
+
+    // Respond to client
+    send(new_socket, hello, strlen(hello), 0);
+    printf("Server: %s\n", hello);
 
     return 0;
 }
-
-
-
