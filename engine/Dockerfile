@@ -8,7 +8,7 @@ COPY jogoVidaOMP.c /app/
 RUN apk update && apk add gcc libc-dev
 
 # Compile o código C e gere o binário do servidor
-RUN gcc -o /app/jogoVidaOMP /app/jogoVidaOMP.c -lpthread
+RUN gcc -o /app/jogoVidaOMP /app/jogoVidaOMP.c -lpthread -fopenmp
 
 # Defina o diretório de trabalho
 WORKDIR /app

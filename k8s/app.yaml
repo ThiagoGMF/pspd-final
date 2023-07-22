@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: openmp-container
-          image: docker.io/thiagogmf/jogo-vida-openmp:1.0.12
+          image: docker.io/marcelog5/openmp-service:1.0.0.0
           ports:
             - containerPort: 1234
           resources:
