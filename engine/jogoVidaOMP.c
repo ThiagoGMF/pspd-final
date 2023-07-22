@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <curl/curl.h>
 
 #define PORT 1234
 #define MAX_CLIENTS 5
@@ -105,6 +106,55 @@ int Correto(int *tabul, int tam)
             tabul[ind2d(tam, tam - 1)] && tabul[ind2d(tam, tam)]);
 } /* fim-Correto */
 
+int save_elastic_data() {
+    CURL *curl;
+    CURLcode res;
+    char data[100];
+    const char *url = "http://elasticsearch-service:9200/openmp/_doc/1";
+    sprintf(data, "{\"init\": \"%d\", \"comp\": \"%d\", \"fim\": \"%d\"}", 1, 2, 3);
+
+    printf("elastic flow iniciado\n");
+
+    // Inicialização do libcurl
+    curl = curl_easy_init();
+    if (curl) {
+        // Configuração da requisição PUT
+        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
+
+        // Lista de cabeçalhos
+        struct curl_slist *headers = NULL;
+        headers = curl_slist_append(headers, "Content-Type: application/json");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+        // Define o modo verbose para imprimir detalhes da requisição no console
+        curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+
+        printf("vai enviar requisição\n");
+        // Realiza a requisição HTTP
+        res = curl_easy_perform(curl);
+        printf("enviou requisição\n");
+
+        // Libera a lista de cabeçalhos
+        curl_slist_free_all(headers);
+
+        // Verifica se houve algum erro
+        if (res != CURLE_OK) {
+            fprintf(stderr, "Erro na requisição: %s\n", curl_easy_strerror(res));
+        } else {
+            printf("Requisição enviada com sucesso!\n");
+        }
+
+        // Libera os recursos
+        curl_easy_cleanup(curl);
+    } else {
+        fprintf(stderr, "Erro na inicialização do libcurl\n");
+    }
+
+    return 0;
+}
+
 void solveProblem(int powmin, int powmax)
 {
     int pow;
@@ -143,6 +193,8 @@ void solveProblem(int powmin, int powmax)
         free(tabulIn);
         free(tabulOut);
     }
+
+    save_elastic_data();
 }
 
 void parse_message(const char* buffer, int* num1, int* num2) {

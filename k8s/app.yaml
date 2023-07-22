@@ -42,7 +42,7 @@ spec:
     spec:
       containers:
         - name: openmp-container
-          image: docker.io/marcelog5/openmp-service:1.0.0.0
+          image: docker.io/marcelog5/openmp-service:1.0.0.5
           ports:
             - containerPort: 1234
           resources:
