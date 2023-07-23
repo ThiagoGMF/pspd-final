@@ -6,7 +6,7 @@ import re
 import time
 from datetime import datetime
 
-url = "http://elasticsearch-service:9200/jogovida/doc/"
+url = "http://elasticsearch-service:9200/jogovida/_doc/"
 connected_clients = []
 
 
