@@ -207,7 +207,7 @@ void solveProblem(int powmin, int powmax)
             printf("**RESULTADO ERRADO**\n");
         }
 
-        save_elastic_data(tam, t2 - t1, status);
+        save_elastic_data(pow, t2 - t1, status);
 
         t3 = wall_time();
         printf("tam=%d; tempos: init=%7.7f, comp=%7.7f, fim=%7.7f, tot=%7.7f \n",
