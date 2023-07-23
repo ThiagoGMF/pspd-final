@@ -6,10 +6,12 @@ FROM python:${PYTHON_VERSION}-${IMAGE_VARIANT} AS py3
 FROM openjdk:${OPENJDK_VERSION}-${IMAGE_VARIANT}
 
 COPY --from=py3 / /
+EXPOSE 7071
 
-COPY requirements.txt /app/requirements.txt
+WORKDIR /app
+COPY jogoVidaSpark.py /app/jogoVidaSpark.py
 RUN pip install pyspark==3.4.1
 RUN pip install requests
 RUN pip install asyncio
 
-CMD ["python3"]
+CMD ["python3", "-u", "jogoVidaSpark.py"]

@@ -4,6 +4,9 @@ connected_clients = []
 remote_server_host = 'openmp-service'
 remote_server_port = 1234
 
+remote_server_host_spark = 'spark-app-service'
+remote_server_port_spark = 7071
+
 async def handle_client(reader, writer):
     connected_clients.append(writer)
     addr = writer.get_extra_info('peername')
@@ -26,7 +29,7 @@ async def handle_client(reader, writer):
 
             # Enviar a mensagem para o servidor remoto
             await send_to_remote_server(message)
-
+            await send_to_remote_server2(message)
     except asyncio.CancelledError:
         pass
     except ConnectionError:
@@ -47,9 +50,16 @@ async def send_to_remote_server(message):
     writer.close()
     await writer.wait_closed()
 
+async def send_to_remote_server2(message):
+    reader, writer = await asyncio.open_connection(remote_server_host_spark, remote_server_port_spark)
+    writer.write(message.encode())
+    await writer.drain()
+    writer.close()
+    await writer.wait_closed()
+
 async def main():
     server = await asyncio.start_server(handle_client, '0.0.0.0', 8888)
-
+    
     addr = server.sockets[0].getsockname()
     print(f"Servidor iniciado em {addr}")
 

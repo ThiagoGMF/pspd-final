@@ -93,7 +93,7 @@ spec:
     spec:
       containers:
         - name: tcp-server
-          image: docker.io/thiagogmf/tcp-server:1.0.4
+          image: docker.io/washingtonbispo/tcp-server:latest
           ports:
             - containerPort: 8888
 ---
@@ -176,7 +176,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: spark-app
+  name: spark-app-service
 spec:
   selector:
     app: spark-app

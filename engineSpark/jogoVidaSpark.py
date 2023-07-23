@@ -2,15 +2,42 @@ from pyspark.sql import SparkSession
 import asyncio
 import requests
 import uuid
+import re
+import time
+from datetime import datetime
 
-url = "http://elasticsearch-service:9200/openmp/_doc/"
+url = "http://elasticsearch-service:9200/jogovida/doc/"
+connected_clients = []
 
+
+def enviarRequisicaPut(url, data):
+    try:
+        response = requests.put(url, json=data)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+        return None
+
+def extrairNumeros(texto):
+    padrao = r'<(\d+),(\d+)>'
+    correspondencias = re.search(padrao, texto)
+    
+    if correspondencias:
+        numero1 = int(correspondencias.group(1))
+        numero2 = int(correspondencias.group(2))
+        if( numero1 > numero2):
+            temp = numero1
+            numero1 = numero2
+            numero2 = temp
+        return (numero1, numero2)
+    else:
+        return None, None
 
 def matrix(m, n):
     return [[0 for x in range(row * n, (row + 1) * n)] for row in range(m)]
 
 def Correto(tabul, tam):
-
   cnt = 0
   for i in range(tam+2):
     for j in range(tam+2):
@@ -28,15 +55,15 @@ def InitTabul(tam):
   return (tabulIn, tabulOut)
 
 def DumpTabul(tabul, tam, first, last, msg):
-	for i in range(first, last+1):
-    print("=", end="")
-  print("‎")
-  for i in range(first,last+1):
-    for j in range(first, last+1):
-      print('X' if tabul[i][j] == 1 else '.', end='')
-    print('|')
-  for i in range(first, last+1):
-    print("=", end="")
+    for i in range(first, last+1):
+        print("=", end="")
+        print("‎")
+    for i in range(first,last+1):
+        for j in range(first, last+1):
+            print('X' if tabul[i][j] == 1 else '.', end='')
+        print('|')
+    for i in range(first, last+1):
+        print("=", end="")
 
 def UmaVida(tabulIn, tabulOut,tam):
   for i in range(1,tam+1):
@@ -54,32 +81,75 @@ def UmaVida(tabulIn, tabulOut,tam):
 def jogoVida(potencia):
   tam = 1 << potencia
   tabulIn, tabulOut = InitTabul(tam+2)
-
+  t1 = datetime.now()
   for i in range(2*(tam-3)):
     UmaVida(tabulIn, tabulOut, tam)
     UmaVida(tabulOut, tabulIn, tam)
+  t2 = datetime.now()
+  delta_tempo = t2 - t1
   if (Correto(tabulIn, tam)):
     print("*Ok, RESULTADO CORRETO*\n", potencia)
   else:
     print("**Not Ok, RESULTADO ERRADO**\n", potencia)
-	guid = str(uuid.uuid4())
-	data = {"mode": "Spark", "potency": potencia, time: 1, status: "correct" if Correto(tabulIn, tam) else "incorrect"}
-	enviarRequisicaPut(url + guid, data)
-POWMIN = 3
-POWMAX = 6
+  guid = str(uuid.uuid4())
+  print("link: ", guid)
+  data = {"mode": "Spark", "potency": potencia, "time": delta_tempo.total_seconds(), "status": 1 if Correto(tabulIn, tam) else 0}
+  enviarRequisicaPut(url + guid, data)
 
-a = list(range(POWMIN,POWMAX+1))
+async def handle_client(reader, writer):
+    connected_clients.append(writer)
+    addr = writer.get_extra_info('peername')
+    print(f"Novo cliente conectado: {addr}")
 
-spark = SparkSession.builder.master("local[6]").appName("MyProgram").getOrCreate()
-a = spark.sparkContext.parallelize(a)
-
-a.foreach(lambda x: jogoVida(x))
-
-def enviarRequisicaPut(url, data):
     try:
-        response = requests.put(url, json=data)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Erro na requisição PUT: {e}")
-        return None
+        data = await reader.read(1024)
+
+        message = data.decode().strip()
+        print(f"Mensagem recebida do cliente {addr}: {message}")
+
+        # Enviar a mensagem para todos os clientes conectados
+        for client in connected_clients:
+            if client != writer and not client.is_closing():
+                client.write(data)
+                await client.drain()
+
+        # Enviar a mensagem para o servidor remoto
+        menor, maior = extrairNumeros(message)
+        if(menor != None):
+            menor = int(menor)
+            maior = int (maior)
+            print(menor, maior, message, "-------------")
+            if(menor> 2 or maior < 11):   
+                a = list(range(menor,maior+1))
+                a = spark.sparkContext.parallelize(a)
+                a.foreach(lambda x: jogoVida(x))
+    except asyncio.CancelledError:
+        pass
+    except ConnectionError:
+        pass
+    finally:
+        print(f"Cliente {addr} desconectado.")
+        try:
+            writer.close()
+            await writer.wait_closed()
+        except asyncio.CancelledError:
+            pass
+        connected_clients.remove(writer)
+
+async def main():
+    server = await asyncio.start_server(handle_client, '0.0.0.0', 7071)
+
+    addr = server.sockets[0].getsockname()
+    print(f"Servidor iniciado em {addr}")
+
+    async with server:
+        await server.serve_forever()
+
+if __name__ == "__main__":
+    global spark
+    spark = SparkSession.builder.master("local[6]").appName("MyProgram").getOrCreate()
+    asyncio.run(main())
+
+spark = ""
+
+
