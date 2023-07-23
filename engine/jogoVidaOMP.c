@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <uuid/uuid.h>
 #include <curl/curl.h>
 
 #define PORT 1234
@@ -106,12 +107,27 @@ int Correto(int *tabul, int tam)
             tabul[ind2d(tam, tam - 1)] && tabul[ind2d(tam, tam)]);
 } /* fim-Correto */
 
-int save_elastic_data() {
+void generate_guid(char* guid_str) {
+    uuid_t uuid;
+    uuid_generate(uuid);
+    uuid_unparse_lower(uuid, guid_str);
+}
+
+int save_elastic_data(int pow, double time, int status) {
     CURL *curl;
     CURLcode res;
-    char data[100];
-    const char *url = "http://elasticsearch-service:9200/openmp/_doc/1";
-    sprintf(data, "{\"init\": \"%d\", \"comp\": \"%d\", \"fim\": \"%d\"}", 1, 2, 3);
+    char data[150];
+    const char *url_template = "http://elasticsearch-service:9200/jogovida/_doc/%s";
+    char full_url[200];
+
+    char guid_str[37]; // Room for the null-terminator
+    generate_guid(guid_str);
+
+    // Format the URL with the given GUID
+    sprintf(full_url, url_template, guid_str);
+
+    // Format the JSON data
+    sprintf(data, "{\"mode\": \"OpenMP\", \"potency\": \"%d\", \"time\": \"%7.7f\", \"status\": \"%d\"}", pow, time, status);
 
     printf("elastic flow iniciado\n");
 
@@ -119,7 +135,7 @@ int save_elastic_data() {
     curl = curl_easy_init();
     if (curl) {
         // Configuração da requisição PUT
-        curl_easy_setopt(curl, CURLOPT_URL, url);
+        curl_easy_setopt(curl, CURLOPT_URL, full_url);
         curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
 
@@ -182,10 +198,16 @@ void solveProblem(int powmin, int powmax)
 
         t2 = wall_time();
 
-        if (Correto(tabulIn, tam))
+        int status = 0;
+        if (Correto(tabulIn, tam)){
+            status = 1;
             printf("**RESULTADO CORRETO**\n");
-        else
+        }
+        else{
             printf("**RESULTADO ERRADO**\n");
+        }
+
+        save_elastic_data(tam, t2 - t1, status);
 
         t3 = wall_time();
         printf("tam=%d; tempos: init=%7.7f, comp=%7.7f, fim=%7.7f, tot=%7.7f \n",
@@ -194,7 +216,6 @@ void solveProblem(int powmin, int powmax)
         free(tabulOut);
     }
 
-    save_elastic_data();
 }
 
 void parse_message(const char* buffer, int* num1, int* num2) {

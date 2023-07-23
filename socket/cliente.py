@@ -20,7 +20,7 @@ async def send_message(writer):
     await writer.wait_closed()
 
 async def main():
-    reader, writer = await asyncio.open_connection('127.0.0.1', 46689)
+    reader, writer = await asyncio.open_connection('127.0.0.1', 35349)
 
     asyncio.create_task(receive_message(reader))
     await send_message(writer)

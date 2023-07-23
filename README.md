@@ -30,6 +30,11 @@
 - minikube service <nome-do-servico>
 - minikube service --url <nome-do-servico>
 
+## Expor as portas
+kubectl expose deployment elasticsearch --type=LoadBalancer --name elasticsearch --port=9200
+
+kubectl expose deployment kibana --type=LoadBalancer --name kibana --port=5601
+
 ## Buildar imagem docker e subir no Docker Hub
 
 - docker build -t <username-docker>/<nome-da-imagem>:<versao> .
