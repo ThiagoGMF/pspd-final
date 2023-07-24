@@ -93,7 +93,7 @@ spec:
     spec:
       containers:
         - name: tcp-server
-          image: docker.io/washingtonbispo/tcp-server:latest
+          image: docker.io/washingtonbispo/tcp-server-2:latest
           ports:
             - containerPort: 8888
 ---
@@ -113,7 +113,7 @@ spec:
     spec:
       containers:
         - name: spark-app
-          image: docker.io/washingtonbispo/pspd-spark:latest
+          image: docker.io/washingtonbispo/pspd-spark-2:latest
           ports:
             - containerPort: 7071  # Substitua pela porta do Spark Web UI, se necessário
           env:

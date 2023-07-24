@@ -6,23 +6,22 @@ import re
 import time
 from datetime import datetime
 
-url = "http://elasticsearch-service:9200/jogovida/_doc/"
+url = "http://elasticsearch-service:9200/jogovida/_create/"
 connected_clients = []
+a = 0
 
-
-def enviarRequisicaPut(url, data):
+   
+def enviarRequisicao(url, data):
     try:
-        response = requests.put(url, json=data)
+        response = requests.post("http://elasticsearch-service:9200/jogovida/_doc", json=data)
         response.raise_for_status()
-        return response.json()
     except requests.exceptions.RequestException as e:
-        print(f"Erro na requisição PUT: {e}")
-        return None
+        print(f"Erro na requisição: {e}")
+    return None
 
 def extrairNumeros(texto):
     padrao = r'<(\d+),(\d+)>'
     correspondencias = re.search(padrao, texto)
-    
     if correspondencias:
         numero1 = int(correspondencias.group(1))
         numero2 = int(correspondencias.group(2))
@@ -93,8 +92,9 @@ def jogoVida(potencia):
     print("**Not Ok, RESULTADO ERRADO**\n", potencia)
   guid = str(uuid.uuid4())
   print("link: ", guid)
-  data = {"mode": "Spark", "potency": potencia, "time": delta_tempo.total_seconds(), "status": 1 if Correto(tabulIn, tam) else 0}
-  enviarRequisicaPut(url + guid, data)
+  json = {"status": 1 if Correto(tabulIn, tam) else 0,"mode": "Spark","time": delta_tempo.total_seconds(),"potency": potencia}
+  print("ENVIANDO=", json)
+  enviarRequisicao(url, json)
 
 async def handle_client(reader, writer):
     connected_clients.append(writer)
@@ -118,7 +118,7 @@ async def handle_client(reader, writer):
         if(menor != None):
             menor = int(menor)
             maior = int (maior)
-            print(menor, maior, message, "-------------")
+            print(menor, maior, "-------------")
             if(menor> 2 or maior < 11):   
                 a = list(range(menor,maior+1))
                 a = spark.sparkContext.parallelize(a)

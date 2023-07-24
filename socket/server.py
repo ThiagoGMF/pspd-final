@@ -1,5 +1,6 @@
 import asyncio
-
+import requests
+import time
 connected_clients = []
 remote_server_host = 'openmp-service'
 remote_server_port = 1234
@@ -7,11 +8,56 @@ remote_server_port = 1234
 remote_server_host_spark = 'spark-app-service'
 remote_server_port_spark = 7071
 
+def mapear():
+   print("----------------------------MAPEANDO----------------------------")
+   json = {"mappings": {"properties": {"mode": {"type": "text"}, "potency": {"type": "integer"}, "status": {"type": "integer"}, "time": {"type": "double"}}}}
+   enviarRequisicaPut("http://elasticsearch-service:9200/jogovida/", json)
+   time.sleep(1) 
+   json = {"status": True,"mode": "MIAU","time": 0.1,"potency": 4}
+   enviarRequisicaPut2(json)
+
+def enviarRequisicaPut(url, data):
+    try:
+        response = requests.put(url, json=data)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+        return None
+
+
+def enviarRequisicaPut2(data):
+    try:
+        response = requests.put("http://elasticsearch-service:9200/jogovida/_doc/1", json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+    time.sleep(2)
+    try:
+        response = requests.post("http://elasticsearch-service:9200/jogovida/_doc", json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+    time.sleep(2)
+    try:
+        response = requests.put("http://elasticsearch-service:9200/jogovida/_create/2", json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+    time.sleep(2)
+    try:
+        response = requests.post("http://elasticsearch-service:9200/jogovida/_create/3", json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        print(f"Erro na requisição PUT: {e}")
+    time.sleep(2)
+
+
 async def handle_client(reader, writer):
     connected_clients.append(writer)
     addr = writer.get_extra_info('peername')
     print(f"Novo cliente conectado: {addr}")
-
+    mapear()
     try:
         while True:
             data = await reader.read(1024)

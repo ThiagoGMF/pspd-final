@@ -11,6 +11,7 @@ COPY server.py /app/server.py
 
 # Defina o diretório de trabalho
 WORKDIR /app
+RUN pip install requests
 
 EXPOSE 8888
 
